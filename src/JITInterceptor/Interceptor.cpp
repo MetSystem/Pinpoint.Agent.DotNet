@@ -13,16 +13,7 @@ typedef struct {
 	BYTE stringToken2[4];
 	BYTE call;
 	BYTE callToken[4];
-} GeneralInterceptBeforeIL;
-
-typedef struct {
-	BYTE ldstr1;
-	BYTE stringToken1[4];
-	BYTE ldstr2;
-	BYTE stringToken2[4];
-	BYTE call;
-	BYTE callToken[4];
-} GeneralInterceptAfterIL;
+} GeneralInterceptIL;
 
 bool Interceptor::IsTiny(LPCBYTE methodBytes)
 {
@@ -69,13 +60,12 @@ void *Interceptor::GetInterceptILCode(FunctionInfo *functionInfo)
 	IMetaDataEmit* metaDataEmit = NULL;
 	Check(corProfilerInfo->GetModuleMetaData(functionInfo->GetModuleID(), ofRead | ofWrite, IID_IMetaDataEmit, (IUnknown**)&metaDataEmit));
 
-	int newMethodSize = 0, ilCodeSize = 0, interceptAfILSize = 0, retOffset = 0;
-	void *ilCode;
-	void *interceptAfIL;
+	int newMethodSize = 0, ilCodeSize = 0, interceptAfILSize = 0;
+	BYTE interceptBeforeIL[64], interceptAfIL[64];
 	ILWriterBase *ilWriterBase;
 
-	ilCode = GetInterceptorBeforeILCode(metaDataEmit, functionInfo, &ilCodeSize);
-	interceptAfIL = GetInterceptorAfterILCode(metaDataEmit, functionInfo, &interceptAfILSize, &retOffset);
+	GetInterceptorBeforeILCode(metaDataEmit, functionInfo, interceptBeforeIL, &ilCodeSize);
+	GetInterceptorAfterILCode(metaDataEmit, functionInfo, interceptAfIL, &interceptAfILSize);
 	newMethodSize = ilCodeSize + interceptAfILSize;
 
 	if (IsTiny(oldMethodBytes))
@@ -98,7 +88,7 @@ void *Interceptor::GetInterceptILCode(FunctionInfo *functionInfo)
 		ilWriterBase = new FatILWriter(corProfilerInfo, functionInfo, oldMethodBytes, oldMethodSize, newMethodSize);
 	}
 
-	return ilWriterBase->GetNewILBytes(ilCode, ilCodeSize, interceptAfIL, interceptAfILSize, retOffset);
+	return ilWriterBase->GetNewILBytes(interceptBeforeIL, ilCodeSize, interceptAfIL, interceptAfILSize);
 }
 
 mdFieldDef Interceptor::GetFieldToken(FunctionInfo *functionInfo, WCHAR *fieldName)
@@ -130,7 +120,7 @@ std::wstring Interceptor::GetModuleVID(FunctionInfo *functionInfo)
 	return std::wstring(strGUID);
 }
 
-void *Interceptor::GetGeneralInterceptBeforeIL(IMetaDataEmit *metaDataEmit, const WCHAR *className, const WCHAR *methodName, int *ilCodeSize)
+void Interceptor::GetGeneralInterceptBeforeIL(IMetaDataEmit *metaDataEmit, const WCHAR *className, const WCHAR *methodName, BYTE *ilCode, int *ilCodeSize)
 {
 	mdTypeRef classToken;
 	Check(metaDataEmit->DefineTypeRefByName(GetAssemblyToken(metaDataEmit, L"Pinpoint.Agent"), L"Pinpoint.Profiler.Bootstrap", &classToken));
@@ -142,25 +132,25 @@ void *Interceptor::GetGeneralInterceptBeforeIL(IMetaDataEmit *metaDataEmit, cons
 	mdMemberRef methodToken;
 	Check(metaDataEmit->DefineMemberRef(classToken, L"InterceptMethodBegin", signature, sizeof(signature), &methodToken));
 
-	GeneralInterceptAfterIL *ilCode = new GeneralInterceptAfterIL();
+	GeneralInterceptIL beforeIL;
 	mdString textToken;
 
 	Check(metaDataEmit->DefineUserString(className, wcslen(className), &textToken));
-	ilCode->ldstr1 = 0x72;
-	memcpy(ilCode->stringToken1, (void*)&textToken, sizeof(textToken));
+	beforeIL.ldstr1 = 0x72;
+	memcpy(beforeIL.stringToken1, (void*)&textToken, sizeof(textToken));
 
 	Check(metaDataEmit->DefineUserString(methodName, wcslen(methodName), &textToken));
-	ilCode->ldstr2 = 0x72;
-	memcpy(ilCode->stringToken2, (void*)&textToken, sizeof(textToken));
+	beforeIL.ldstr2 = 0x72;
+	memcpy(beforeIL.stringToken2, (void*)&textToken, sizeof(textToken));
 
-	ilCode->call = 0x28;
-	memcpy(ilCode->callToken, (void*)&methodToken, sizeof(methodToken));
+	beforeIL.call = 0x28;
+	memcpy(beforeIL.callToken, (void*)&methodToken, sizeof(methodToken));
 
-	*ilCodeSize = sizeof(GeneralInterceptAfterIL);
-	return ilCode;
+	*ilCodeSize = sizeof(GeneralInterceptIL);
+	memcpy(ilCode, &beforeIL, *ilCodeSize);
 }
 
-void *Interceptor::GetGeneralInterceptAfterIL(IMetaDataEmit *metaDataEmit, const WCHAR *className, const WCHAR *methodName, int *ilCodeSize)
+void Interceptor::GetGeneralInterceptAfterIL(IMetaDataEmit *metaDataEmit, const WCHAR *className, const WCHAR *methodName, BYTE *ilCode, int *ilCodeSize)
 {
 	mdTypeRef classToken;
 	Check(metaDataEmit->DefineTypeRefByName(GetAssemblyToken(metaDataEmit, L"Pinpoint.Agent"), L"Pinpoint.Profiler.Bootstrap", &classToken));
@@ -172,20 +162,20 @@ void *Interceptor::GetGeneralInterceptAfterIL(IMetaDataEmit *metaDataEmit, const
 	mdMemberRef methodToken;
 	Check(metaDataEmit->DefineMemberRef(classToken, L"InterceptMethodEnd", signature, sizeof(signature), &methodToken));
 
-	GeneralInterceptAfterIL *ilCode = new GeneralInterceptAfterIL();
+	GeneralInterceptIL afterIL;
 	mdString textToken;
 
 	Check(metaDataEmit->DefineUserString(className, wcslen(className), &textToken));
-	ilCode->ldstr1 = 0x72;
-	memcpy(ilCode->stringToken1, (void*)&textToken, sizeof(textToken));
+	afterIL.ldstr1 = 0x72;
+	memcpy(afterIL.stringToken1, (void*)&textToken, sizeof(textToken));
 
 	Check(metaDataEmit->DefineUserString(methodName, wcslen(methodName), &textToken));
-	ilCode->ldstr2 = 0x72;
-	memcpy(ilCode->stringToken2, (void*)&textToken, sizeof(textToken));
+	afterIL.ldstr2 = 0x72;
+	memcpy(afterIL.stringToken2, (void*)&textToken, sizeof(textToken));
 
-	ilCode->call = 0x28;
-	memcpy(ilCode->callToken, (void*)&methodToken, sizeof(methodToken));
+	afterIL.call = 0x28;
+	memcpy(afterIL.callToken, (void*)&methodToken, sizeof(methodToken));
 
-	*ilCodeSize = sizeof(GeneralInterceptAfterIL);
-	return ilCode;
+	*ilCodeSize = sizeof(GeneralInterceptIL);
+	memcpy(ilCode, &afterIL, *ilCodeSize);
 }

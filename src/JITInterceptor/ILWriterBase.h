@@ -17,7 +17,7 @@ public:
 	~ILWriterBase(void);
 
 	virtual BOOL CanRewrite();
-	void *GetNewILBytes(void *interceptBeforeIL, int interceptBeforeILSize, void *interceptAfterIL, int interceptAfterILSzie, int afterILOffset);
+	void *GetNewILBytes(void *interceptBeforeIL, int interceptBeforeILSize, void *interceptAfterIL, int interceptAfterILSzie);
 
 protected:
 	virtual ULONG GetOldMethodBodySize() = 0;
@@ -28,7 +28,7 @@ protected:
 	virtual void WriteExtra(void* newMethodBytes, int interceptBeforeILSize) = 0;
 
 	void *AllocateNewMethodBody(FunctionInfo *functionInfo);
-	void *WriteILBody(void* newMethodBytes, void *interceptBeforeIL, int interceptBeforeILSize, void *interceptAfterIL, int interceptAfterILSzie, int afterILOffset);
+	void *WriteILBody(void* newMethodBytes, void *interceptBeforeIL, int interceptBeforeILSize, void *interceptAfterIL, int interceptAfterILSzie);
 	LPCBYTE GetOldMethodBytes();
 	ULONG GetOldMethodSize();
 	ULONG GetNewMethodBodySize();

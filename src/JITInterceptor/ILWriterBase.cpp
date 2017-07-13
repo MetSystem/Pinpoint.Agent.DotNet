@@ -55,7 +55,7 @@ BOOL ILWriterBase::CanRewrite()
 	return TRUE;
 }
 
-void *ILWriterBase::GetNewILBytes(void *interceptBeforeIL, int interceptBeforeILSize, void *interceptAfterIL, int interceptAfterILSzie, int afterILOffset)
+void *ILWriterBase::GetNewILBytes(void *interceptBeforeIL, int interceptBeforeILSize, void *interceptAfterIL, int interceptAfterILSzie)
 {
 	void* newMethodBytes = AllocateNewMethodBody(functionInfo);
 
@@ -71,7 +71,7 @@ void *ILWriterBase::GetNewILBytes(void *interceptBeforeIL, int interceptBeforeIL
 
 	WriteHeader(newMethodBytes);
 
-	WriteILBody(newMethodBytes, interceptBeforeIL, interceptBeforeILSize, interceptAfterIL, interceptAfterILSzie, afterILOffset);
+	WriteILBody(newMethodBytes, interceptBeforeIL, interceptBeforeILSize, interceptAfterIL, interceptAfterILSzie);
 
 	WriteExtra(newMethodBytes, interceptBeforeILSize);
 
@@ -99,18 +99,19 @@ void *ILWriterBase::AllocateNewMethodBody(FunctionInfo *functionInfo)
 	return result;
 }
 
-void *ILWriterBase::WriteILBody(void* newMethodBytes, void *interceptBeforeIL, int interceptBeforeILSize, void *interceptAfterIL, int interceptAfterILSize, int afterILOffset)
+void *ILWriterBase::WriteILBody(void* newMethodBytes, void *interceptBeforeIL, int interceptBeforeILSize, void *interceptAfterIL, int interceptAfterILSize)
 {
 	IMetaDataEmit* metaDataEmit = NULL;
+	BYTE ret[1] = { 0x2a };
+	int afterILOffset = 1;
 	Check(profilerInfo->GetModuleMetaData(functionInfo->GetModuleID(), ofRead | ofWrite, IID_IMetaDataEmit, (IUnknown**)&metaDataEmit));
 
 	memcpy((BYTE*)newMethodBytes + GetHeaderSize(), interceptBeforeIL, interceptBeforeILSize);
+	
 	memcpy((BYTE*)newMethodBytes + GetHeaderSize() + interceptBeforeILSize, (BYTE*)GetOldMethodBytes() + GetOldHeaderSize(), GetOldMethodBodySize());
 
-	BYTE *tmp = new BYTE[afterILOffset];
-	memcpy(tmp, (BYTE*)newMethodBytes + GetHeaderSize() + GetOldMethodBodySize() + interceptBeforeILSize - afterILOffset, afterILOffset);
 	memcpy((BYTE*)newMethodBytes + GetHeaderSize() + GetOldMethodBodySize() + interceptBeforeILSize - afterILOffset, interceptAfterIL, interceptAfterILSize);
-	memcpy((BYTE*)newMethodBytes + GetHeaderSize() + GetOldMethodBodySize() + interceptBeforeILSize - afterILOffset + interceptAfterILSize, tmp, afterILOffset);
+	memcpy((BYTE*)newMethodBytes + GetHeaderSize() + GetOldMethodBodySize() + interceptBeforeILSize - afterILOffset + interceptAfterILSize, ret, afterILOffset);
 }
 
 int ILWriterBase::ILCodeParse(BYTE *methodBody, int offset, BYTE *op, int *opLength, BYTE *arg, int *argLength)

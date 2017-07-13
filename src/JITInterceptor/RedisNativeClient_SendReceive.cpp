@@ -33,7 +33,7 @@ WCHAR *RedisNativeClient_SendReceive::GetMethodName()
 	return L"SendReceive";
 }
 
-void* RedisNativeClient_SendReceive::GetInterceptorBeforeILCode(IMetaDataEmit *metaDataEmit, FunctionInfo *functionInfo, int *ilCodeSize)
+void RedisNativeClient_SendReceive::GetInterceptorBeforeILCode(IMetaDataEmit *metaDataEmit, FunctionInfo *functionInfo, BYTE *ilCode, int *ilCodeSize)
 {
 	mdTypeRef classToken;
 	Check(metaDataEmit->DefineTypeRefByName(GetAssemblyToken(metaDataEmit, L"Pinpoint.Agent"), L"Pinpoint.Profiler.Bootstrap", &classToken));
@@ -45,28 +45,27 @@ void* RedisNativeClient_SendReceive::GetInterceptorBeforeILCode(IMetaDataEmit *m
 	mdMemberRef methodToken;
 	Check(metaDataEmit->DefineMemberRef(classToken, L"InterceptMethodBegin", signature, sizeof(signature), &methodToken));
 
-	BeforeIL *ilCode = new BeforeIL();
+	BeforeIL beforeIL;
 	mdString textToken;
 
 	Check(metaDataEmit->DefineUserString(L"ServiceStack.Redis.RedisNativeClient", wcslen(L"ServiceStack.Redis.RedisNativeClient"), &textToken));
-	ilCode->ldstr1 = 0x72;
-	memcpy(ilCode->stringToken1, (void*)&textToken, sizeof(textToken));
+	beforeIL.ldstr1 = 0x72;
+	memcpy(beforeIL.stringToken1, (void*)&textToken, sizeof(textToken));
 
 	Check(metaDataEmit->DefineUserString(L"SendReceive", wcslen(L"SendReceive"), &textToken));
-	ilCode->ldstr2 = 0x72;
-	memcpy(ilCode->stringToken2, (void*)&textToken, sizeof(textToken));
+	beforeIL.ldstr2 = 0x72;
+	memcpy(beforeIL.stringToken2, (void*)&textToken, sizeof(textToken));
 
-	ilCode->ldarg = 0x03;
+	beforeIL.ldarg = 0x03;
 
-	ilCode->call = 0x28;
-	memcpy(ilCode->callToken, (void*)&methodToken, sizeof(methodToken));
+	beforeIL.call = 0x28;
+	memcpy(beforeIL.callToken, (void*)&methodToken, sizeof(methodToken));
 
-	*ilCodeSize = sizeof(BeforeIL);
-	return ilCode;
+	*ilCodeSize = sizeof(beforeIL);
+	memcpy(ilCode, &beforeIL, *ilCodeSize);
 }
 
-void *RedisNativeClient_SendReceive::GetInterceptorAfterILCode(IMetaDataEmit *metaDataEmit, FunctionInfo *functionInfo, int *ilCodeSize, int *offset)
+void RedisNativeClient_SendReceive::GetInterceptorAfterILCode(IMetaDataEmit *metaDataEmit, FunctionInfo *functionInfo, BYTE *ilCode, int *ilCodeSize)
 {
-	*offset = 1;
-	return GetGeneralInterceptAfterIL(metaDataEmit, functionInfo->GetClassNameW(), functionInfo->GetFunctionName(), ilCodeSize);
+	GetGeneralInterceptAfterIL(metaDataEmit, functionInfo->GetClassNameW(), functionInfo->GetFunctionName(), ilCode, ilCodeSize);
 }

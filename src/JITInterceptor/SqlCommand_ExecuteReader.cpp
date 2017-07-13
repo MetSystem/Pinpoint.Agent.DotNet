@@ -28,7 +28,7 @@ WCHAR *SqlCommand_ExecuteReader::GetMethodName()
 	return L"ExecuteReader";
 }
 
-void *SqlCommand_ExecuteReader::GetInterceptorBeforeILCode(IMetaDataEmit *metaDataEmit, FunctionInfo *functionInfo, int *ilCodeSize)
+void SqlCommand_ExecuteReader::GetInterceptorBeforeILCode(IMetaDataEmit *metaDataEmit, FunctionInfo *functionInfo, BYTE *ilCode, int *ilCodeSize)
 {
 	mdTypeRef classToken;
 	Check(metaDataEmit->DefineTypeRefByName(GetAssemblyToken(metaDataEmit, L"Pinpoint.Agent"), L"Pinpoint.Profiler.Bootstrap", &classToken));
@@ -40,28 +40,27 @@ void *SqlCommand_ExecuteReader::GetInterceptorBeforeILCode(IMetaDataEmit *metaDa
 	mdMemberRef methodToken;
 	Check(metaDataEmit->DefineMemberRef(classToken, L"InterceptMethodBegin", signature, sizeof(signature), &methodToken));
 
-	BeforeIL *ilCode = new BeforeIL();
+	BeforeIL beforeIL;
 	mdString textToken;
 
 	Check(metaDataEmit->DefineUserString(L"System.Data.SqlClient.SqlCommand", wcslen(L"System.Data.SqlClient.SqlCommand"), &textToken));
-	ilCode->ldstr1 = 0x72;
-	memcpy(ilCode->stringToken1, (void*)&textToken, sizeof(textToken));
+	beforeIL.ldstr1 = 0x72;
+	memcpy(beforeIL.stringToken1, (void*)&textToken, sizeof(textToken));
 
 	Check(metaDataEmit->DefineUserString(L"ExecuteReader", wcslen(L"ExecuteReader"), &textToken));
-	ilCode->ldstr2 = 0x72;
-	memcpy(ilCode->stringToken2, (void*)&textToken, sizeof(textToken));
+	beforeIL.ldstr2 = 0x72;
+	memcpy(beforeIL.stringToken2, (void*)&textToken, sizeof(textToken));
 
-	ilCode->ldOp = 0x02;
+	beforeIL.ldOp = 0x02;
 
-	ilCode->call = 0x28;
-	memcpy(ilCode->callToken, (void*)&methodToken, sizeof(methodToken));
+	beforeIL.call = 0x28;
+	memcpy(beforeIL.callToken, (void*)&methodToken, sizeof(methodToken));
 
-	*ilCodeSize = sizeof(BeforeIL);
-	return ilCode;
+	*ilCodeSize = sizeof(beforeIL);
+	memcpy(ilCode, &beforeIL, *ilCodeSize);
 }
 
-void *SqlCommand_ExecuteReader::GetInterceptorAfterILCode(IMetaDataEmit *metaDataEmit, FunctionInfo *functionInfo, int *ilCodeSize, int *offset)
+void SqlCommand_ExecuteReader::GetInterceptorAfterILCode(IMetaDataEmit *metaDataEmit, FunctionInfo *functionInfo, BYTE *ilCode, int *ilCodeSize)
 {
-	*offset = 1;
-	return GetGeneralInterceptAfterIL(metaDataEmit, functionInfo->GetClassNameW(), functionInfo->GetFunctionName(), ilCodeSize);
+	GetGeneralInterceptAfterIL(metaDataEmit, functionInfo->GetClassNameW(), functionInfo->GetFunctionName(), ilCode, ilCodeSize);
 }
