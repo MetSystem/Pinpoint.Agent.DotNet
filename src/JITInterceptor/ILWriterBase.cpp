@@ -104,7 +104,7 @@ void *ILWriterBase::WriteILBody(void* newMethodBytes, void *interceptBeforeIL, i
 	IMetaDataEmit* metaDataEmit = NULL;
 	BYTE ret[1] = { 0x2a };
 	int afterILOffset = 1;
-	Check(profilerInfo->GetModuleMetaData(functionInfo->GetModuleID(), ofRead | ofWrite, IID_IMetaDataEmit, (IUnknown**)&metaDataEmit));
+	Check(profilerInfo->GetModuleMetaData(functionInfo->GetModuleID(), ofRead, IID_IMetaDataEmit, (IUnknown**)&metaDataEmit));
 
 	memcpy((BYTE*)newMethodBytes + GetHeaderSize(), interceptBeforeIL, interceptBeforeILSize);
 	

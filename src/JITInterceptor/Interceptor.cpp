@@ -58,7 +58,7 @@ void *Interceptor::GetInterceptILCode(FunctionInfo *functionInfo)
 	Check(corProfilerInfo->GetILFunctionBody(functionInfo->GetModuleID(), functionInfo->GetToken(), &oldMethodBytes, &oldMethodSize));
 
 	IMetaDataEmit* metaDataEmit = NULL;
-	Check(corProfilerInfo->GetModuleMetaData(functionInfo->GetModuleID(), ofRead | ofWrite, IID_IMetaDataEmit, (IUnknown**)&metaDataEmit));
+	Check(corProfilerInfo->GetModuleMetaData(functionInfo->GetModuleID(), ofRead, IID_IMetaDataEmit, (IUnknown**)&metaDataEmit));
 
 	int newMethodSize = 0, ilCodeSize = 0, interceptAfILSize = 0;
 	BYTE interceptBeforeIL[64], interceptAfIL[64];
@@ -96,7 +96,7 @@ mdFieldDef Interceptor::GetFieldToken(FunctionInfo *functionInfo, WCHAR *fieldNa
 	ModuleID moduleID;
 	mdTypeDef classToken;
 	IMetaDataImport* metaDataImport = NULL;
-	Check(corProfilerInfo->GetModuleMetaData(functionInfo->GetModuleID(), ofRead | ofWrite, IID_IMetaDataImport, (IUnknown**)&metaDataImport));
+	Check(corProfilerInfo->GetModuleMetaData(functionInfo->GetModuleID(), ofRead, IID_IMetaDataImport, (IUnknown**)&metaDataImport));
 	Check(corProfilerInfo->GetClassIDInfo(functionInfo->GetClassID(), &moduleID, &classToken));
 
 	mdFieldDef fieldToken;
@@ -109,7 +109,7 @@ std::wstring Interceptor::GetModuleVID(FunctionInfo *functionInfo)
 	ModuleID moduleID;
 	mdTypeDef classToken;
 	IMetaDataImport* metaDataImport = NULL;
-	Check(corProfilerInfo->GetModuleMetaData(functionInfo->GetModuleID(), ofRead | ofWrite, IID_IMetaDataImport, (IUnknown**)&metaDataImport));
+	Check(corProfilerInfo->GetModuleMetaData(functionInfo->GetModuleID(), ofRead, IID_IMetaDataImport, (IUnknown**)&metaDataImport));
 
 	WCHAR moduleName[1024]; ULONG nameSize; GUID mvid;
 	Check(metaDataImport->GetScopeProps(moduleName, 1024, &nameSize, &mvid));
