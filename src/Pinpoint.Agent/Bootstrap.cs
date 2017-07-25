@@ -230,7 +230,7 @@
                         {
                             if (i > 0)
                             {
-                                logger.WarnFormat("end method stack error,className:{0},methodName:{1}", className, methodName);
+                                logger.WarnFormat("end method stack error,className:{0},methodName:{1}", spanEventWrapper.ClassName, spanEventWrapper.MethodName);
                             }
                             if (i == size - 1)
                             {
