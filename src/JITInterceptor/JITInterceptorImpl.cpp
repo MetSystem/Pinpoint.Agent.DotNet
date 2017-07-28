@@ -30,12 +30,7 @@ void JITInterceptorImpl::CheckOk(HRESULT hr)
 
 HRESULT JITInterceptorImpl::SetEventMask()
 {
-	DWORD eventMask = COR_PRF_MONITOR_NONE;
-	eventMask |= COR_PRF_MONITOR_JIT_COMPILATION;
-	eventMask |= COR_PRF_DISABLE_INLINING;
-	eventMask |= COR_PRF_DISABLE_OPTIMIZATIONS;
-	eventMask |= COR_PRF_MONITOR_CLASS_LOADS;
-	eventMask |= COR_PRF_MONITOR_CACHE_SEARCHES;
+	DWORD eventMask = COR_PRF_MONITOR_JIT_COMPILATION;
 	eventMask |= COR_PRF_USE_PROFILE_IMAGES;
 
 	return m_corProfilerInfo->SetEventMask(eventMask);
