@@ -3,11 +3,13 @@
     using Agent.Thrift.IO;
     using Common;
     using Control;
+    using DotNet.Configuration;
     using Packet;
     using System;
     using System.Collections.Generic;
     using System.Net.Sockets;
     using System.Threading;
+    using TinyIoC;
 
     public class DefaultPinpointTcpClient
     {
@@ -21,6 +23,7 @@
 
         public DefaultPinpointTcpClient()
         {
+            var pinpointConfig = TinyIoCContainer.Current.Resolve<PinpointConfig>();
             if (client == null)
             {
                 lock (locker)
@@ -28,7 +31,7 @@
                     if (client == null)
                     {
                         client = new TcpClient();
-                        client.Connect("10.10.11.70", 9994);
+                        client.Connect(pinpointConfig.CollectorIp, pinpointConfig.TcpListenPort);
                         if (!client.Connected)
                         {
                             throw new SocketException((int)SocketError.NotConnected);
