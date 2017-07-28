@@ -18,7 +18,7 @@
 
     public class DefaultAgentClient
     {
-        private const string agentVersion = "1.7.0-SNAPSHOT";
+        private const string agentVersion = "1.6.2";
 
         private DefaultPinpointTcpClient tcpClient = new DefaultPinpointTcpClient();
 
@@ -164,9 +164,10 @@
         private void SendAgentStatInfo()
         {
             var agentConfig = TinyIoCContainer.Current.Resolve<AgentConfig>();
+            var pinpointConfig = TinyIoCContainer.Current.Resolve<PinpointConfig>();
             while (true)
             {
-                IPEndPoint ip = new IPEndPoint(IPAddress.Parse("10.10.11.70"), 9995);
+                IPEndPoint ip = new IPEndPoint(IPAddress.Parse(pinpointConfig.CollectorIp), 9995);
                 Socket server = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 
                 #region assemble agent stat batch entity

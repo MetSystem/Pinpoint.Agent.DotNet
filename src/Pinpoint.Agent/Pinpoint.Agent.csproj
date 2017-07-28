@@ -242,7 +242,6 @@
   <PropertyGroup>
     <PreBuildEvent>cd $(ProjectDir)Thrift
 generate.bat</PreBuildEvent>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>xcopy "$(TargetPath)" "../../../../dist" /y</PostBuildEvent>
   </PropertyGroup>
 </Project>
