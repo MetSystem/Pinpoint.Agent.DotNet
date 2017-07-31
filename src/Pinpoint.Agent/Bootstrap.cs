@@ -2,8 +2,8 @@
 {
     using Agent;
     using Agent.Common;
+    using Agent.Configuration;
     using Agent.Context;
-    using Agent.DotNet.Configuration;
     using Agent.Meta;
     using Agent.Network;
     using Agent.Thrift.Dto;
@@ -20,8 +20,6 @@
     public static class Bootstrap
     {
         private static Logger logger = Logger.Current;
-
-        private static PinpointUdpClient client = new PinpointUdpClient();
 
         private const string contextItemNamePrefix = "Pinpoint";
         private const string tSpanItemName = contextItemNamePrefix + ".TSPan";
@@ -250,7 +248,7 @@
 
                         #endregion
 
-                        client.Send(span);
+                        DefaultAgentClient.SendSpanData(span);
 
                         CleanRequest(context);
                     }

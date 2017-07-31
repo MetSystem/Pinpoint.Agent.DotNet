@@ -1,4 +1,4 @@
-﻿namespace Pinpoint.Agent.DotNet.Configuration
+﻿namespace Pinpoint.Agent.Configuration
 {
     public class AgentConfig
     {

@@ -86,6 +86,7 @@
     <Compile Include="Control\ControlMessageDecoder.cs" />
     <Compile Include="Control\ControlMessageEncoder.cs" />
     <Compile Include="DefaultAgentClient.cs" />
+    <Compile Include="Environment.cs" />
     <Compile Include="Libs\Thrift\Collections\TCollections.cs" />
     <Compile Include="Libs\Thrift\Collections\THashSet.cs" />
     <Compile Include="Libs\Thrift\Protocol\TAbstractBase.cs" />

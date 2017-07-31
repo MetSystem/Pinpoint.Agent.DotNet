@@ -1,6 +1,5 @@
 ﻿namespace Pinpoint.Agent.Network
 {
-    using DotNet.Configuration;
     using global::Thrift.Protocol;
     using System;
     using System.Collections.Concurrent;
@@ -15,13 +14,20 @@
         private ConcurrentQueue<TBase> cachedQueue = null;
         private Timer flushMsgTimer = null;
         private ManualResetEvent flushMsgThreadSignal = null;
-        private IPEndPoint ip = null;
+        private IPEndPoint ipep = null;
+
+        private string ip;
+
+        private int port;
+
         private Socket server = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 
-        public PinpointUdpClient()
+        public PinpointUdpClient(string ip, int port)
         {
-            var pinpointConfig = TinyIoCContainer.Current.Resolve<PinpointConfig>();
-            ip = new IPEndPoint(IPAddress.Parse(pinpointConfig.CollectorIp), pinpointConfig.UpdSpanListenPort);
+            this.ip = ip;
+            this.port = port;
+
+            ipep = new IPEndPoint(IPAddress.Parse(ip), port);
 
             cachedQueue = new ConcurrentQueue<TBase>();
             flushMsgTimer = new Timer(FlushMsg, null, 1000, 1000);
@@ -53,11 +59,11 @@
                     while (cachedQueue.TryDequeue(out msg))
                     {
                         var data = serializer.serialize(msg);
-                        server.SendTo(data, ip);
+                        server.SendTo(data, ipep);
                     }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Common.Logger.Current.Error(ex.ToString());
             }
