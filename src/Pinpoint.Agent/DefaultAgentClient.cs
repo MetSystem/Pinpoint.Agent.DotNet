@@ -18,9 +18,9 @@
 
     public class DefaultAgentClient
     {
-        private const string agentVersion = "1.6.2";
+        private const string agentVersion = "1.7.0-SNAPSHOT";
 
-        private DefaultPinpointTcpClient tcpClient = new DefaultPinpointTcpClient();
+        private DefaultPinpointTcpClient tcpClient;
 
         private static DefaultApiMetaDataService dataService = null;
 
@@ -41,6 +41,18 @@
             get
             {
                 return isStart;
+            }
+        }
+
+        public DefaultPinpointTcpClient TcpClient
+        {
+            get
+            {
+                if (tcpClient == null)
+                {
+                    tcpClient = new DefaultPinpointTcpClient();
+                }
+                return tcpClient;
             }
         }
 
@@ -80,8 +92,8 @@
 
                 Logger.Init(agentConfig.ApplicationName);
 
-                dataService = new DefaultApiMetaDataService(agentConfig.AgentId, agentConfig.AgentStartTime, tcpClient);
-                sqlDataService = new DefaultSqlMetaDataService(agentConfig.AgentId, agentConfig.AgentStartTime, tcpClient);
+                dataService = new DefaultApiMetaDataService(agentConfig.AgentId, agentConfig.AgentStartTime, TcpClient);
+                sqlDataService = new DefaultSqlMetaDataService(agentConfig.AgentId, agentConfig.AgentStartTime, TcpClient);
 
                 new Thread(StartAgent).Start();
                 isStart = true;
@@ -149,7 +161,7 @@
                     {
                         var payload = serializer.serialize(agentInfo);
                         var request = new RequestPacket(IdGenerator.SequenceId(), payload);
-                        tcpClient.Send(request.ToBuffer());
+                        TcpClient.Send(request.ToBuffer());
                     }
                 }
                 catch (Exception ex)
@@ -167,7 +179,7 @@
             var pinpointConfig = TinyIoCContainer.Current.Resolve<PinpointConfig>();
             while (true)
             {
-                IPEndPoint ip = new IPEndPoint(IPAddress.Parse(pinpointConfig.CollectorIp), 9995);
+                IPEndPoint ip = new IPEndPoint(IPAddress.Parse(pinpointConfig.CollectorIp), pinpointConfig.UdpStatListenPort);
                 Socket server = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 
                 #region assemble agent stat batch entity
@@ -284,7 +296,7 @@
             handshakeData.Add("startTimestamp", agentConfig.AgentStartTime);
             var payload = new ControlMessageEncoder().EncodeMap(handshakeData);
             var helloPacket = new ControlHandshakePacket(IdGenerator.SequenceId(), payload);
-            tcpClient.Send(helloPacket.ToBuffer());
+            TcpClient.Send(helloPacket.ToBuffer());
         }
 
         private void InitAgentContext()
