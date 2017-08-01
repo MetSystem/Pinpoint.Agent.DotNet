@@ -1,6 +1,7 @@
 ﻿namespace Pinpoint.Agent
 {
     using Configuration;
+    using DotNet.Configuration;
     using Meta;
     using Thrift.Dto;
     using Thrift.IO;
@@ -17,13 +18,13 @@
 
     public class DefaultAgentClient
     {
+        private const string agentVersion = "1.7.0-SNAPSHOT";
+
         private DefaultPinpointTcpClient tcpClient;
 
-        private PinpointUdpClient spanUdpClient;
+        private static DefaultApiMetaDataService dataService = null;
 
-        private DefaultApiMetaDataService dataService;
-
-        private DefaultSqlMetaDataService sqlDataService;
+        private static DefaultSqlMetaDataService sqlDataService = null;
 
         private Thread sendAgentInfoThread;
 
@@ -43,13 +44,22 @@
             }
         }
 
-        private DefaultAgentClient(DefaultPinpointTcpClient tcpClient, PinpointUdpClient spanUdpClient,
-            DefaultApiMetaDataService dataService, DefaultSqlMetaDataService sqlDataService)
+        //fix collector ip is null
+        public DefaultPinpointTcpClient TcpClient
         {
-            this.tcpClient = tcpClient;
-            this.spanUdpClient = spanUdpClient;
-            this.dataService = dataService;
-            this.sqlDataService = sqlDataService;
+            get
+            {
+                if (tcpClient == null)
+                {
+                    tcpClient = new DefaultPinpointTcpClient();
+                }
+                return tcpClient;
+            }
+        }
+
+        private DefaultAgentClient()
+        {
+
         }
 
         public static DefaultAgentClient GetInstance()
@@ -60,15 +70,7 @@
                 {
                     if (instance == null)
                     {
-                        Environment.Init();
-
-                        var tcpClient = TinyIoCContainer.Current.Resolve<DefaultPinpointTcpClient>();
-                        var spanUdpClient = TinyIoCContainer.Current.Resolve<PinpointUdpClient>();
-                        var dataService = TinyIoCContainer.Current.Resolve<DefaultApiMetaDataService>();
-                        var sqlDataService = TinyIoCContainer.Current.Resolve<DefaultSqlMetaDataService>();
-
-                        instance = new DefaultAgentClient(tcpClient, spanUdpClient,
-                            dataService, sqlDataService);
+                        instance = new DefaultAgentClient();
                     }
                 }
             }
@@ -85,6 +87,15 @@
                     return;
                 }
 
+                InitAgentContext();
+
+                var agentConfig = TinyIoCContainer.Current.Resolve<AgentConfig>();
+
+                Logger.Init(agentConfig.ApplicationName);
+
+                dataService = new DefaultApiMetaDataService(agentConfig.AgentId, agentConfig.AgentStartTime, TcpClient);
+                sqlDataService = new DefaultSqlMetaDataService(agentConfig.AgentId, agentConfig.AgentStartTime, TcpClient);
+
                 new Thread(StartAgent).Start();
                 isStart = true;
 
@@ -92,21 +103,16 @@
             }
         }
 
-        public static void SendSpanData(TSpan span)
-        {
-            DefaultAgentClient.GetInstance().spanUdpClient.Send(span);
-        }
-
         public static int CacheApi(MethodDescriptor methodDescriptor)
         {
             methodDescriptor.ApiId = methodDescriptor.ApiId = IdGenerator.SequenceId();
-            return GetInstance().dataService.CacheApi(methodDescriptor);
+            return dataService.CacheApi(methodDescriptor);
         }
         public static int CacheSql(string sql)
         {
-            var parseResult = GetInstance().sqlDataService.ParseSql(sql);
+            var parseResult = sqlDataService.ParseSql(sql);
             parseResult.Id = IdGenerator.SequenceId();
-            return GetInstance().sqlDataService.CacheSql(parseResult);
+            return sqlDataService.CacheSql(parseResult);
         }
 
         private void StartAgent()
@@ -156,7 +162,7 @@
                     {
                         var payload = serializer.serialize(agentInfo);
                         var request = new RequestPacket(IdGenerator.SequenceId(), payload);
-                        tcpClient.Send(request.ToBuffer());
+                        TcpClient.Send(request.ToBuffer());
                     }
                 }
                 catch (Exception ex)
@@ -241,9 +247,9 @@
                     new TDataSource()
                     {
                         Id = 1,
-                        DatabaseName = "test",
+                        DatabaseName = "management",
                         ServiceTypeCode = 6050,
-                        Url = "jdbc:mysql://192.168.1.1:3306/test",
+                        Url = "jdbc:mysql://10.10.12.50:3306/management?maxpoolsize=300",
                         MaxConnectionSize = 8
                     }
                 }
@@ -291,7 +297,46 @@
             handshakeData.Add("startTimestamp", agentConfig.AgentStartTime);
             var payload = new ControlMessageEncoder().EncodeMap(handshakeData);
             var helloPacket = new ControlHandshakePacket(IdGenerator.SequenceId(), payload);
-            tcpClient.Send(helloPacket.ToBuffer());
+            TcpClient.Send(helloPacket.ToBuffer());
+        }
+
+        private void InitAgentContext()
+        {
+            var container = TinyIoC.TinyIoCContainer.Current;
+
+            LoadAgentConfig(container);
+
+            LoadPinpointConfig(container);
+        }
+
+        private void LoadAgentConfig(TinyIoCContainer container)
+        {
+            var agentConfig = new AgentConfig()
+            {
+                HostName = Dns.GetHostName(),
+                AgentId = Environment.GetEnvironmentVariable("PINPOINT_AGENT_ID"),
+                ApplicationName = System.Web.Hosting.HostingEnvironment.ApplicationHost.GetSiteName(),
+                AgentStartTime = TimeUtils.GetCurrentTimestamp(),
+                AgentVersion = agentVersion
+            };
+            container.Register<AgentConfig>(agentConfig);
+        }
+
+        private void LoadPinpointConfig(TinyIoCContainer container)
+        {
+            var pinpointHome = Environment.GetEnvironmentVariable("PINPOINT_HOME");
+            var configs = ConfigManager.Load(pinpointHome.TrimEnd('\\') + "\\pinpoint.config");
+            var pinpointConfig = new PinpointConfig();
+            var val = String.Empty;
+            configs.TryGetValue("profiler.collector.ip", out val);
+            pinpointConfig.CollectorIp = val;
+            configs.TryGetValue("profiler.collector.span.port", out val);
+            pinpointConfig.UpdSpanListenPort = int.Parse(val);
+            configs.TryGetValue("profiler.collector.stat.port", out val);
+            pinpointConfig.UdpStatListenPort = int.Parse(val);
+            configs.TryGetValue("profiler.collector.tcp.port", out val);
+            pinpointConfig.TcpListenPort = int.Parse(val);
+            container.Register<PinpointConfig>(pinpointConfig);
         }
     }
 }
