@@ -44,6 +44,7 @@
             }
         }
 
+        //fix collector ip is null
         public DefaultPinpointTcpClient TcpClient
         {
             get
